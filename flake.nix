@@ -5,85 +5,120 @@
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
   };
 
-  outputs = { self, nixpkgs }:
+  outputs =
+    { self, nixpkgs }:
     let
       system = "x86_64-linux";
-      version = "1.0.2-b.3";
+      version = "1.0.2-b.4";
       downloadUrl = {
-        "specific" = {
-	  url = "https://github.com/zen-browser/desktop/releases/download/${version}/zen.linux-specific.tar.bz2";
-	  sha256 = "sha256:0gjrvsq83l6424ijii2w0c43f2nkf6n04hb2bc9wf1yyq7g3s2nc";
-	};
-	"generic" = {
-	  url = "https://github.com/zen-browser/desktop/releases/download/${version}/zen.linux-generic.tar.bz2";
-	  sha256 = "sha256:1kv44fkql60rjgqcqsfdhbi4zr8bi91fkswlsk5d6mwj8nw1clmj";
-	};
+        url = "https://github.com/zen-browser/desktop/releases/download/${version}/zen.linux-x86_64.tar.bz2";
+        sha256 = "sha256:0vqzins5g4xx6niylzjq071vyk4djpn6a7rh1ymbx83ns0xb4lb5";
       };
 
       pkgs = import nixpkgs {
         inherit system;
       };
 
-      runtimeLibs = with pkgs; [
-        libGL libGLU libevent libffi libjpeg libpng libstartup_notification libvpx libwebp
-        stdenv.cc.cc fontconfig libxkbcommon zlib freetype
-        gtk3 libxml2 dbus xcb-util-cursor alsa-lib libpulseaudio pango atk cairo gdk-pixbuf glib
-	udev libva mesa libnotify cups pciutils
-	ffmpeg libglvnd pipewire
-      ] ++ (with pkgs.xorg; [
-        libxcb libX11 libXcursor libXrandr libXi libXext libXcomposite libXdamage
-	libXfixes libXScrnSaver
-      ]);
-
-      mkZen = { variant }: 
-        let
-	  downloadData = downloadUrl."${variant}";
-	in
-             pkgs.stdenv.mkDerivation {
-    inherit version;
-		pname = "zen-browser";
-
-		src = builtins.fetchTarball {
-		  url = downloadData.url;
-		  sha256 = downloadData.sha256;
-		};
-		
-		desktopSrc = ./.;
-
-		phases = [ "installPhase" "fixupPhase" ];
-
-		nativeBuildInputs = [ pkgs.makeWrapper pkgs.copyDesktopItems pkgs.wrapGAppsHook ] ;
-
-		installPhase = ''
-		  mkdir -p $out/bin && cp -r $src/* $out/bin
-		  install -D $desktopSrc/zen.desktop $out/share/applications/zen.desktop
-		  install -D $src/browser/chrome/icons/default/default128.png $out/share/icons/hicolor/128x128/apps/zen.png
-		'';
-
-		fixupPhase = ''
-		  chmod 755 $out/bin/*
-		  patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out/bin/zen
-		  wrapProgram $out/bin/zen --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath runtimeLibs}" \
-                    --set MOZ_LEGACY_PROFILES 1 --set MOZ_ALLOW_DOWNGRADE 1 --set MOZ_APP_LAUNCHER zen --prefix XDG_DATA_DIRS : "$GSETTINGS_SCHEMAS_PATH"
-		  patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out/bin/zen-bin
-		  wrapProgram $out/bin/zen-bin --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath runtimeLibs}" \
-                    --set MOZ_LEGACY_PROFILES 1 --set MOZ_ALLOW_DOWNGRADE 1 --set MOZ_APP_LAUNCHER zen --prefix XDG_DATA_DIRS : "$GSETTINGS_SCHEMAS_PATH"
-		  patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out/bin/glxtest
-		  wrapProgram $out/bin/glxtest --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath runtimeLibs}"
-		  patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out/bin/updater
-		  wrapProgram $out/bin/updater --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath runtimeLibs}"
-		  patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out/bin/vaapitest
-		  wrapProgram $out/bin/vaapitest --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath runtimeLibs}"
-		'';
-
-    meta.mainProgram = "zen";
-	      };
+      runtimeLibs =
+        with pkgs;
+        [
+          libGL
+          libGLU
+          libevent
+          libffi
+          libjpeg
+          libpng
+          libstartup_notification
+          libvpx
+          libwebp
+          stdenv.cc.cc
+          fontconfig
+          libxkbcommon
+          zlib
+          freetype
+          gtk3
+          libxml2
+          dbus
+          xcb-util-cursor
+          alsa-lib
+          libpulseaudio
+          pango
+          atk
+          cairo
+          gdk-pixbuf
+          glib
+          udev
+          libva
+          mesa
+          libnotify
+          cups
+          pciutils
+          ffmpeg
+          libglvnd
+          pipewire
+        ]
+        ++ (with pkgs.xorg; [
+          libxcb
+          libX11
+          libXcursor
+          libXrandr
+          libXi
+          libXext
+          libXcomposite
+          libXdamage
+          libXfixes
+          libXScrnSaver
+        ]);
     in
     {
       packages."${system}" = {
-        generic = mkZen { variant = "generic"; };
-        specific = mkZen { variant = "specific"; };
-	default = self.packages."${system}".specific;
+        default = pkgs.stdenv.mkDerivation {
+          inherit version;
+          pname = "zen-browser";
+
+          src = builtins.fetchTarball {
+            url = downloadUrl.url;
+            sha256 = downloadUrl.sha256;
+          };
+
+          desktopSrc = ./.;
+
+          phases = [
+            "installPhase"
+            "fixupPhase"
+          ];
+
+          nativeBuildInputs = [
+            pkgs.makeWrapper
+            pkgs.copyDesktopItems
+            pkgs.wrapGAppsHook
+          ];
+
+          installPhase = ''
+            mkdir -p $out/bin && cp -r $src/* $out/bin
+            install -D $desktopSrc/zen.desktop $out/share/applications/zen.desktop
+            install -D $src/browser/chrome/icons/default/default128.png $out/share/icons/hicolor/128x128/apps/zen.png
+          '';
+
+          fixupPhase = ''
+            chmod 755 $out/bin/*
+            patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out/bin/zen
+            wrapProgram $out/bin/zen --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath runtimeLibs}" \
+                          --set MOZ_LEGACY_PROFILES 1 --set MOZ_ALLOW_DOWNGRADE 1 --set MOZ_APP_LAUNCHER zen --prefix XDG_DATA_DIRS : "$GSETTINGS_SCHEMAS_PATH"
+            patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out/bin/zen-bin
+            wrapProgram $out/bin/zen-bin --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath runtimeLibs}" \
+                          --set MOZ_LEGACY_PROFILES 1 --set MOZ_ALLOW_DOWNGRADE 1 --set MOZ_APP_LAUNCHER zen --prefix XDG_DATA_DIRS : "$GSETTINGS_SCHEMAS_PATH"
+            patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out/bin/glxtest
+            wrapProgram $out/bin/glxtest --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath runtimeLibs}"
+            patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out/bin/updater
+            wrapProgram $out/bin/updater --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath runtimeLibs}"
+            patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out/bin/vaapitest
+            wrapProgram $out/bin/vaapitest --set LD_LIBRARY_PATH "${pkgs.lib.makeLibraryPath runtimeLibs}"
+          '';
+
+          meta.mainProgram = "zen";
+        };
       };
+      formatter."x86_64-linux" = nixpkgs.legacyPackages."x86_64-linux".nixfmt-rfc-style;
     };
 }
